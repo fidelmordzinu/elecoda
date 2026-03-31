@@ -147,14 +147,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategoryFilter() {
     final categories = [
       {'name': null, 'label': 'All'},
-      {'name': 'res', 'label': 'Resistors'},
-      {'name': 'cap', 'label': 'Capacitors'},
-      {'name': 'dio', 'label': 'Diodes'},
-      {'name': 'ics', 'label': 'ICs'},
-      {'name': 'con', 'label': 'Connectors'},
-      {'name': 'ind', 'label': 'Inductors'},
-      {'name': 'mcu', 'label': 'MCUs'},
-      {'name': 'xtr', 'label': 'Transistors'},
+      {'name': 'Resistor', 'label': 'Resistors'},
+      {'name': 'Capacitor', 'label': 'Capacitors'},
+      {'name': 'Diode', 'label': 'Diodes'},
+      {'name': 'Integrated Circuit', 'label': 'ICs'},
+      {'name': 'Connector', 'label': 'Connectors'},
+      {'name': 'Inductor', 'label': 'Inductors'},
+      {'name': 'Transistor', 'label': 'Transistors'},
+      {'name': 'Circuit Protection', 'label': 'Protection'},
+      {'name': 'Regulator', 'label': 'Regulators'},
+      {'name': 'Oscillator', 'label': 'Oscillators'},
+      {'name': 'Optoelectronics', 'label': 'Opto'},
+      {'name': 'RF Module', 'label': 'RF'},
+      {'name': 'Switch', 'label': 'Switches'},
+      {'name': 'Power', 'label': 'Power'},
     ];
 
     return SingleChildScrollView(

@@ -43,6 +43,7 @@ class _CircuitGeneratorScreenState extends State<CircuitGeneratorScreen> {
                     ),
                   ),
                   maxLines: 3,
+                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(

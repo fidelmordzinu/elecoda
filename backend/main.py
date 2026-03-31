@@ -174,7 +174,7 @@ async def search_components(
                     """
                     SELECT id, part_number, manufacturer, category
                     FROM all_components
-                    WHERE category = $1
+                    WHERE LOWER(category) = LOWER($1)
                       AND (
                           part_number ILIKE $4
                           OR manufacturer ILIKE $4
