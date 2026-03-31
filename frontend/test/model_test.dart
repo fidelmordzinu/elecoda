@@ -7,35 +7,58 @@ void main() {
     test('fromJson parses valid JSON', () {
       final json = {
         'id': 1,
-        'mpn': 'RC0402FR-0710KL',
-        'description': 'Resistor 10k',
-        'category': 'resistor',
+        'part_number': 'RC0402FR-0710KL',
+        'manufacturer': 'Yageo',
+        'category': 'res',
       };
       final component = ComponentModel.fromJson(json);
       expect(component.id, 1);
-      expect(component.mpn, 'RC0402FR-0710KL');
-      expect(component.description, 'Resistor 10k');
-      expect(component.category, 'resistor');
+      expect(component.partNumber, 'RC0402FR-0710KL');
+      expect(component.manufacturer, 'Yageo');
+      expect(component.category, 'res');
     });
 
     test('toJson serializes correctly', () {
       final component = ComponentModel(
         id: 1,
-        mpn: 'RC0402FR-0710KL',
-        description: 'Resistor 10k',
-        category: 'resistor',
+        partNumber: 'RC0402FR-0710KL',
+        manufacturer: 'Yageo',
+        category: 'res',
       );
       final json = component.toJson();
       expect(json['id'], 1);
-      expect(json['mpn'], 'RC0402FR-0710KL');
+      expect(json['part_number'], 'RC0402FR-0710KL');
+      expect(json['manufacturer'], 'Yageo');
     });
 
     test('handles null fields', () {
-      final json = {'mpn': 'TEST'};
+      final json = {'part_number': 'TEST', 'manufacturer': 'TestMfg'};
       final component = ComponentModel.fromJson(json);
-      expect(component.mpn, 'TEST');
-      expect(component.description, isNull);
+      expect(component.partNumber, 'TEST');
+      expect(component.manufacturer, 'TestMfg');
       expect(component.category, isNull);
+    });
+
+    test('parses attributes from JSON string', () {
+      final json = {
+        'part_number': 'TEST',
+        'manufacturer': 'TestMfg',
+        'attributes': '{"resistance": "10k"}',
+      };
+      final component = ComponentModel.fromJson(json);
+      expect(component.attributes, isNotNull);
+      expect(component.attributes!['resistance'], '10k');
+    });
+
+    test('parses attributes from JSON object', () {
+      final json = {
+        'part_number': 'TEST',
+        'manufacturer': 'TestMfg',
+        'attributes': {'capacitance': '100nF'},
+      };
+      final component = ComponentModel.fromJson(json);
+      expect(component.attributes, isNotNull);
+      expect(component.attributes!['capacitance'], '100nF');
     });
   });
 

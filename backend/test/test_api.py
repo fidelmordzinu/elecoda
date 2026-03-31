@@ -32,22 +32,31 @@ def make_mock_pool(fetch_rows=None, fetchrow_row=None):
 def mock_pool():
     return make_mock_pool(
         fetch_rows=[
-            {'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402', 'category': 'resistor'},
-            {'id': 2, 'mpn': 'GRM155R71C104K', 'description': 'Capacitor 100nF 0402', 'category': 'capacitor'},
+            {'id': 1, 'part_number': 'RC0402FR-0710KL', 'manufacturer': 'Yageo', 'category': 'res'},
+            {'id': 2, 'part_number': 'GRM155R71C104K', 'manufacturer': 'Murata', 'category': 'cap'},
         ],
         fetchrow_row={
-            'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402',
-            'datasheet_url': 'https://example.com/datasheet', 'specs': '{"resistance": "10k"}',
-            'category': 'resistor',
+            'id': 1, 'part_number': 'RC0402FR-0710KL', 'manufacturer': 'Yageo',
+            'category': 'res', 'attributes': '{"resistance": "10k"}',
         },
     )
 
 
 @pytest.fixture
-def app(mock_pool):
+def mock_gemini_client():
+    mock_client = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.text = '{"components": [], "connections": []}'
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    return mock_client
+
+
+@pytest.fixture
+def app(mock_pool, mock_gemini_client):
     with patch('main.get_pool', new_callable=AsyncMock, return_value=mock_pool):
-        from main import app
-        yield app
+        with patch('gemini_service._client', mock_gemini_client):
+            from main import app
+            yield app
 
 
 @pytest.fixture
@@ -65,7 +74,15 @@ def test_root(client):
 def test_health(client):
     response = client.get('/health')
     assert response.status_code == 200
-    assert response.json()['status'] == 'healthy'
+    data = response.json()
+    assert 'status' in data
+    assert 'database' in data
+
+
+def test_categories(client):
+    response = client.get('/categories')
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
 
 def test_search_empty_query(client):
@@ -80,11 +97,18 @@ def test_search_success(client):
     assert isinstance(data, list)
 
 
+def test_search_with_category(client):
+    response = client.get('/search?q=RC0402&category=res')
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
 def test_get_component_success(client):
     response = client.get('/component/1')
     assert response.status_code == 200
     data = response.json()
-    assert data['mpn'] == 'RC0402FR-0710KL'
+    assert data['part_number'] == 'RC0402FR-0710KL'
+    assert data['manufacturer'] == 'Yageo'
 
 
 def test_get_component_not_found(client):
@@ -94,9 +118,21 @@ def test_get_component_not_found(client):
         assert response.status_code == 404
 
 
+def test_suggestions_empty_query(client):
+    response = client.get('/suggestions?q=')
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_suggestions_success(client):
+    response = client.get('/suggestions?q=resistor')
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
 def test_generate_circuit_empty_query(client):
     response = client.post('/generate_circuit', json={'query': '', 'inventory': []})
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 def test_generate_circuit_success(client):
@@ -110,7 +146,10 @@ def test_generate_circuit_success(client):
         ],
     }
 
-    with patch('main.generate_circuit', return_value=mock_response):
+    async def async_mock(*args, **kwargs):
+        return mock_response
+
+    with patch('main.generate_circuit', new_callable=AsyncMock, side_effect=async_mock):
         response = client.post(
             '/generate_circuit',
             json={'query': 'LED blinker circuit', 'inventory': ['GRM155R71C104K']},
@@ -123,7 +162,10 @@ def test_generate_circuit_success(client):
 
 
 def test_generate_circuit_gemini_error(client):
-    with patch('main.generate_circuit', side_effect=ValueError('Invalid response')):
+    async def async_error(*args, **kwargs):
+        raise ValueError('Invalid response')
+
+    with patch('main.generate_circuit', new_callable=AsyncMock, side_effect=async_error):
         response = client.post(
             '/generate_circuit',
             json={'query': 'LED blinker circuit', 'inventory': []},

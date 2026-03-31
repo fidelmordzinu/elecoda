@@ -1,11 +1,16 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 import json
+import re
 import logging
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+load_dotenv()
+
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """You are an electronics expert. The user wants to build: {query}.
 The user already owns these components (MPNs/descriptions): {inventory}.
@@ -21,23 +26,55 @@ Output ONLY a JSON object with:
 }}"""
 
 
-def generate_circuit(query: str, inventory: list[str]) -> dict:
+async def generate_circuit(query: str, inventory: list[str]) -> dict:
     try:
         inventory_str = ", ".join(inventory) if inventory else "None"
         prompt = SYSTEM_PROMPT.format(query=query, inventory=inventory_str)
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        response = await _client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema={
+                    "type": "OBJECT",
+                    "properties": {
+                        "components": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "ref": {"type": "STRING"},
+                                    "type": {"type": "STRING"},
+                                    "value": {"type": "STRING"},
+                                    "mpn": {"type": "STRING"},
+                                    "in_inventory": {"type": "BOOLEAN"},
+                                },
+                                "required": ["ref", "type", "value"],
+                            },
+                        },
+                        "connections": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "from": {"type": "STRING"},
+                                    "to": {"type": "STRING"},
+                                },
+                                "required": ["from", "to"],
+                            },
+                        },
+                    },
+                    "required": ["components", "connections"],
+                },
+            ),
+        )
 
         text = response.text.strip()
 
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            text = match.group(0)
 
         result = json.loads(text)
 

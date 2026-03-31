@@ -9,4 +9,5 @@ class Components extends Table {
   TextColumn get category => text().nullable()();
   IntColumn get quantity => integer().withDefault(const Constant(1))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  IntColumn get backendId => integer().nullable()();
 }

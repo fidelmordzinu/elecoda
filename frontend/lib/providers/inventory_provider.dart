@@ -10,6 +10,7 @@ class InventoryProvider extends ChangeNotifier {
 
   List<Component> get components => _components;
   bool get isLoading => _isLoading;
+  Set<String> get mpnSet => _components.map((c) => c.mpn).toSet();
 
   InventoryProvider({required this.database}) {
     loadComponents();
@@ -29,15 +30,15 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   Future<bool> addComponent(ComponentModel component) async {
-    final exists = await database.componentExists(component.mpn);
+    final exists = await database.componentExists(component.partNumber);
     if (exists) return false;
 
     await database.insertComponent(
       ComponentsCompanion(
-        mpn: Value(component.mpn),
-        description: Value(component.description),
-        datasheetUrl: Value(component.datasheetUrl),
-        specs: Value(component.specs),
+        mpn: Value(component.partNumber),
+        description: Value(component.manufacturer),
+        datasheetUrl: Value(null),
+        specs: Value(component.attributes?.toString()),
         category: Value(component.category),
         quantity: const Value(1),
       ),
@@ -56,7 +57,7 @@ class InventoryProvider extends ChangeNotifier {
     await loadComponents();
   }
 
-  Future<bool> isInInventory(String mpn) async {
-    return await database.componentExists(mpn);
+  bool isInInventory(String mpn) {
+    return mpnSet.contains(mpn);
   }
 }

@@ -18,21 +18,21 @@ class _ComponentDetailScreenState extends State<ComponentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.component.mpn)),
+      appBar: AppBar(title: Text(widget.component.partNumber)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow('MPN', widget.component.mpn),
-            if (widget.component.description != null)
-              _buildInfoRow('Description', widget.component.description!),
+            _buildInfoRow('Part Number', widget.component.partNumber),
+            _buildInfoRow('Manufacturer', widget.component.manufacturer),
             if (widget.component.category != null)
               _buildInfoRow('Category', widget.component.category!),
-            if (widget.component.datasheetUrl != null)
-              _buildInfoRow('Datasheet', widget.component.datasheetUrl!),
-            if (widget.component.specs != null)
-              _buildInfoRow('Specs', widget.component.specs!),
+            if (widget.component.attributes != null)
+              _buildInfoRow(
+                'Attributes',
+                _formatAttributes(widget.component.attributes!),
+              ),
             const SizedBox(height: 24),
             Center(
               child: _isLoading
@@ -47,6 +47,10 @@ class _ComponentDetailScreenState extends State<ComponentDetailScreen> {
         ),
       ),
     );
+  }
+
+  String _formatAttributes(Map<String, dynamic> attrs) {
+    return attrs.entries.map((e) => '${e.key}: ${e.value}').join('\n');
   }
 
   Widget _buildInfoRow(String label, String value) {

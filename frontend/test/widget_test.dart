@@ -21,6 +21,8 @@ class MockSearchProvider extends ChangeNotifier implements SearchProvider {
   @override
   List<ComponentModel> results = [];
   @override
+  List<Map<String, dynamic>> suggestions = [];
+  @override
   bool isLoading = false;
   @override
   String? error;
@@ -28,7 +30,9 @@ class MockSearchProvider extends ChangeNotifier implements SearchProvider {
   final ApiService apiService;
   MockSearchProvider({required this.apiService});
   @override
-  Future<void> search(String query) async {}
+  Future<void> search(String query, {String? category}) async {}
+  @override
+  void fetchSuggestions(String query) {}
 }
 
 class MockInventoryProvider extends ChangeNotifier
@@ -41,6 +45,8 @@ class MockInventoryProvider extends ChangeNotifier
   final AppDatabase database;
   MockInventoryProvider({required this.database});
   @override
+  Set<String> get mpnSet => components.map((c) => c.mpn).toSet();
+  @override
   Future<void> loadComponents() async {}
   @override
   Future<bool> addComponent(ComponentModel component) async => true;
@@ -49,7 +55,7 @@ class MockInventoryProvider extends ChangeNotifier
   @override
   Future<void> updateQuantity(int id, int quantity) async {}
   @override
-  Future<bool> isInInventory(String mpn) async => false;
+  bool isInInventory(String mpn) => false;
 }
 
 class MockCircuitProvider extends ChangeNotifier implements CircuitProvider {

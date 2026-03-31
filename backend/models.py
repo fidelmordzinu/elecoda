@@ -1,21 +1,32 @@
-from pydantic import BaseModel
-from typing import Optional, List, Any
+from pydantic import BaseModel, Field
+from typing import Optional, List, Any, Annotated
+from pydantic import StringConstraints
 
 
 class Component(BaseModel):
     id: int
-    mpn: str
-    description: Optional[str] = None
-    datasheet_url: Optional[str] = None
-    specs: Optional[Any] = None
+    part_number: str
+    manufacturer: str
     category: Optional[str] = None
+    attributes: Optional[Any] = None
 
 
 class ComponentSearchResult(BaseModel):
     id: int
-    mpn: str
-    description: Optional[str] = None
+    part_number: str
+    manufacturer: str
     category: Optional[str] = None
+
+
+class CategoryDetail(BaseModel):
+    ipn: Optional[str] = None
+    mpn: Optional[str] = None
+    manufacturer: Optional[str] = None
+    description: Optional[str] = None
+    symbol: Optional[str] = None
+    footprint: Optional[str] = None
+    datasheet: Optional[str] = None
+    extra: Optional[dict] = None
 
 
 class CircuitComponent(BaseModel):
@@ -27,15 +38,24 @@ class CircuitComponent(BaseModel):
 
 
 class CircuitConnection(BaseModel):
-    fr: str
+    from_: str = Field(alias="from")
     to: str
+
+    model_config = {"populate_by_name": True}
 
 
 class CircuitRequest(BaseModel):
-    query: str
-    inventory: Optional[List[str]] = []
+    query: Annotated[str, StringConstraints(min_length=1, max_length=2000, strip_whitespace=True)]
+    inventory: Optional[List[Annotated[str, StringConstraints(max_length=500)]]] = []
 
 
 class CircuitResponse(BaseModel):
     components: List[CircuitComponent]
     connections: List[CircuitConnection]
+
+
+class CategoryInfo(BaseModel):
+    name: str
+    display_name: str
+    count: int
+    description: Optional[str] = None

@@ -13,7 +13,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) => m.createAll(),
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.addColumn(components, components.backendId);
+      }
+    },
+  );
 
   Future<List<Component>> getAllComponents() => select(components).get();
 
@@ -21,6 +31,12 @@ class AppDatabase extends _$AppDatabase {
     return (select(
       components,
     )..where((t) => t.mpn.equals(mpn))).getSingleOrNull();
+  }
+
+  Future<int?> getBackendIdByMpn(String mpn) {
+    return (select(components)..where((t) => t.mpn.equals(mpn)))
+        .getSingleOrNull()
+        .then((row) => row?.backendId);
   }
 
   Future<int> insertComponent(ComponentsCompanion entry) {

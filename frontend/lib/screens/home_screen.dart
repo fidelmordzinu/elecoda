@@ -15,11 +15,43 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controller = TextEditingController();
+  final LayerLink _layerLink = LayerLink();
+  List<Map<String, dynamic>> _suggestions = [];
+  bool _showSuggestions = false;
+  String? _selectedCategory;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    context.read<SearchProvider>().search(value, category: _selectedCategory);
+    context.read<SearchProvider>().fetchSuggestions(value);
+  }
+
+  void _onSuggestionsUpdated() {
+    final provider = context.read<SearchProvider>();
+    if (provider.suggestions != _suggestions) {
+      setState(() {
+        _suggestions = provider.suggestions;
+        _showSuggestions =
+            _suggestions.isNotEmpty && _controller.text.isNotEmpty;
+      });
+    }
+  }
+
+  void _selectSuggestion(Map<String, dynamic> suggestion) {
+    _controller.text = suggestion['part_number'] ?? '';
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: _controller.text.length),
+    );
+    setState(() => _showSuggestions = false);
+    context.read<SearchProvider>().search(
+      _controller.text,
+      category: _selectedCategory,
+    );
   }
 
   @override
@@ -39,43 +71,135 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                hintText: 'Search components...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _controller.clear();
-                          context.read<SearchProvider>().search('');
+          Column(
+            children: [
+              CompositedTransformTarget(
+                link: _layerLink,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: 'Search components...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _controller.clear();
+                                    setState(() => _showSuggestions = false);
+                                    context.read<SearchProvider>().search('');
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.search,
+                        onChanged: _onSearchChanged,
+                        onSubmitted: (value) {
+                          setState(() => _showSuggestions = false);
+                          context.read<SearchProvider>().search(
+                            value,
+                            category: _selectedCategory,
+                          );
                         },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildCategoryFilter(),
+                    ],
+                  ),
                 ),
               ),
-              textInputAction: TextInputAction.search,
-              onChanged: (value) =>
-                  context.read<SearchProvider>().search(value),
-              onSubmitted: (value) =>
-                  context.read<SearchProvider>().search(value),
-            ),
+              Expanded(child: _buildBody(context)),
+            ],
           ),
-          Expanded(child: _buildBody(context)),
+          if (_showSuggestions)
+            CompositedTransformFollower(
+              link: _layerLink,
+              targetAnchor: Alignment.bottomLeft,
+              followerAnchor: Alignment.topLeft,
+              offset: const Offset(16, 8),
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxHeight: 200,
+                    minWidth: 300,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _suggestions.length,
+                    itemBuilder: (context, index) {
+                      final suggestion = _suggestions[index];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.memory, size: 20),
+                        title: Text(suggestion['part_number'] ?? ''),
+                        subtitle: Text(suggestion['manufacturer'] ?? ''),
+                        onTap: () => _selectSuggestion(suggestion),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter() {
+    final categories = [
+      {'name': null, 'label': 'All'},
+      {'name': 'res', 'label': 'Resistors'},
+      {'name': 'cap', 'label': 'Capacitors'},
+      {'name': 'dio', 'label': 'Diodes'},
+      {'name': 'ics', 'label': 'ICs'},
+      {'name': 'con', 'label': 'Connectors'},
+      {'name': 'ind', 'label': 'Inductors'},
+      {'name': 'mcu', 'label': 'MCUs'},
+      {'name': 'xtr', 'label': 'Transistors'},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = _selectedCategory == cat['name'];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(cat['label'] as String),
+              selected: isSelected,
+              onSelected: (_) {
+                setState(() {
+                  _selectedCategory = cat['name'];
+                });
+                if (_controller.text.isNotEmpty) {
+                  context.read<SearchProvider>().search(
+                    _controller.text,
+                    category: _selectedCategory,
+                  );
+                }
+              },
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildBody(BuildContext context) {
     final searchProvider = context.watch<SearchProvider>();
+    final inventoryProvider = context.watch<InventoryProvider>();
+    final inventoryMpnSet = inventoryProvider.mpnSet;
 
     if (searchProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -91,8 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Error: ${searchProvider.error}'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () =>
-                  context.read<SearchProvider>().search(_controller.text),
+              onPressed: () => context.read<SearchProvider>().search(
+                _controller.text,
+                category: _selectedCategory,
+              ),
               child: const Text('Retry'),
             ),
           ],
@@ -121,37 +247,35 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: searchProvider.results.length,
       itemBuilder: (context, index) {
         final component = searchProvider.results[index];
-        return _buildCard(context, component);
+        return _buildCard(context, component, inventoryMpnSet);
       },
     );
   }
 
-  Widget _buildCard(BuildContext context, ComponentModel component) {
+  Widget _buildCard(
+    BuildContext context,
+    ComponentModel component,
+    Set<String> inventoryMpnSet,
+  ) {
+    final isInInventory = inventoryMpnSet.contains(component.partNumber);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
         leading: const Icon(Icons.memory),
-        title: Text(component.mpn),
+        title: Text(component.partNumber),
         subtitle: Text(
           [
-            component.description,
+            component.manufacturer,
             component.category,
-          ].where((s) => s != null && s.isNotEmpty).join(' • '),
+          ].where((s) => s != null && s.isNotEmpty).join(' \u2022 '),
         ),
-        trailing: FutureBuilder<bool>(
-          future: context.read<InventoryProvider>().isInInventory(
-            component.mpn,
-          ),
-          builder: (context, snapshot) {
-            if (snapshot.data == true) {
-              return const Icon(Icons.check_circle, color: Colors.green);
-            }
-            return IconButton(
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: () => _addToInventory(context, component),
-            );
-          },
-        ),
+        trailing: isInInventory
+            ? const Icon(Icons.check_circle, color: Colors.green)
+            : IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () => _addToInventory(context, component),
+              ),
         onTap: () {
           Navigator.push(
             context,
