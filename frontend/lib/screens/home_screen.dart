@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _controller = TextEditingController();
   final LayerLink _layerLink = LayerLink();
-  List<Map<String, dynamic>> _suggestions = [];
+  final List<Map<String, dynamic>> _suggestions = [];
   bool _showSuggestions = false;
   String? _selectedCategory;
 
@@ -29,17 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchChanged(String value) {
     context.read<SearchProvider>().search(value, category: _selectedCategory);
     context.read<SearchProvider>().fetchSuggestions(value);
-  }
-
-  void _onSuggestionsUpdated() {
-    final provider = context.read<SearchProvider>();
-    if (provider.suggestions != _suggestions) {
-      setState(() {
-        _suggestions = provider.suggestions;
-        _showSuggestions =
-            _suggestions.isNotEmpty && _controller.text.isNotEmpty;
-      });
-    }
   }
 
   void _selectSuggestion(Map<String, dynamic> suggestion) {
