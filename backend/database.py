@@ -18,16 +18,6 @@ async def get_pool():
         async with _pool_lock:
             if _pool is None:
                 _pool = await _create_pool()
-    else:
-        if not _pool.is_alive():
-            logger.warning("Pool is not alive, recreating...")
-            async with _pool_lock:
-                if _pool is not None and not _pool.is_alive():
-                    try:
-                        await _pool.close()
-                    except Exception:
-                        pass
-                    _pool = await _create_pool()
     return _pool
 
 
