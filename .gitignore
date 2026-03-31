@@ -20,10 +20,11 @@ frontend/ios/Flutter/Debug.xcconfig
 frontend/ios/Flutter/Release.xcconfig
 frontend/.env
 
-# Test
-test/__pycache__/
-test/venv/
-test/.env
+# Backend Test
+backend/test/__pycache__/
+
+# Frontend Test
+frontend/test/*.mocks.dart
 
 # IDE
 .idea/

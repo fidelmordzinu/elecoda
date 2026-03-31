@@ -1,37 +1,53 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'backend')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-@pytest.fixture
-def mock_pool():
-    pool = AsyncMock()
+class AsyncContextManagerMock:
+    def __init__(self, return_value):
+        self.return_value = return_value
+
+    async def __aenter__(self):
+        return self.return_value
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
+
+
+def make_mock_pool(fetch_rows=None, fetchrow_row=None):
     conn = AsyncMock()
-    conn.fetch = AsyncMock(return_value=[
-        {'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402', 'category': 'resistor'},
-        {'id': 2, 'mpn': 'GRM155R71C104K', 'description': 'Capacitor 100nF 0402', 'category': 'capacitor'},
-    ])
-    conn.fetchrow = AsyncMock(return_value={
-        'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402',
-        'datasheet_url': 'https://example.com/datasheet', 'specs': '{"resistance": "10k"}',
-        'category': 'resistor',
-    })
-    acquire_ctx = AsyncMock()
-    acquire_ctx.__aenter__ = AsyncMock(return_value=conn)
-    acquire_ctx.__aexit__ = AsyncMock(return_value=None)
-    pool.acquire.return_value = acquire_ctx
+    if fetch_rows is not None:
+        conn.fetch = AsyncMock(return_value=fetch_rows)
+    conn.fetchrow = AsyncMock(return_value=fetchrow_row)
+
+    pool = AsyncMock()
+    pool.acquire = lambda: AsyncContextManagerMock(conn)
     return pool
 
 
 @pytest.fixture
+def mock_pool():
+    return make_mock_pool(
+        fetch_rows=[
+            {'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402', 'category': 'resistor'},
+            {'id': 2, 'mpn': 'GRM155R71C104K', 'description': 'Capacitor 100nF 0402', 'category': 'capacitor'},
+        ],
+        fetchrow_row={
+            'id': 1, 'mpn': 'RC0402FR-0710KL', 'description': 'Resistor 10k 0402',
+            'datasheet_url': 'https://example.com/datasheet', 'specs': '{"resistance": "10k"}',
+            'category': 'resistor',
+        },
+    )
+
+
+@pytest.fixture
 def app(mock_pool):
-    with patch('backend.database._pool', mock_pool):
-        with patch('backend.database.get_pool', return_value=mock_pool):
-            from backend.main import app
-            yield app
+    with patch('main.get_pool', new_callable=AsyncMock, return_value=mock_pool):
+        from main import app
+        yield app
 
 
 @pytest.fixture
@@ -72,16 +88,8 @@ def test_get_component_success(client):
 
 
 def test_get_component_not_found(client):
-    with patch('backend.main.get_pool') as mock_get_pool:
-        mock_pool = AsyncMock()
-        mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value=None)
-        mock_acquire = AsyncMock()
-        mock_acquire.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_acquire.__aexit__ = AsyncMock(return_value=None)
-        mock_pool.acquire.return_value = mock_acquire
-        mock_get_pool.return_value = mock_pool
-
+    empty_pool = make_mock_pool(fetchrow_row=None)
+    with patch('main.get_pool', new_callable=AsyncMock, return_value=empty_pool):
         response = client.get('/component/999')
         assert response.status_code == 404
 
@@ -102,7 +110,7 @@ def test_generate_circuit_success(client):
         ],
     }
 
-    with patch('backend.main.generate_circuit', return_value=mock_response):
+    with patch('main.generate_circuit', return_value=mock_response):
         response = client.post(
             '/generate_circuit',
             json={'query': 'LED blinker circuit', 'inventory': ['GRM155R71C104K']},
@@ -115,7 +123,7 @@ def test_generate_circuit_success(client):
 
 
 def test_generate_circuit_gemini_error(client):
-    with patch('backend.main.generate_circuit', side_effect=ValueError('Invalid response')):
+    with patch('main.generate_circuit', side_effect=ValueError('Invalid response')):
         response = client.post(
             '/generate_circuit',
             json={'query': 'LED blinker circuit', 'inventory': []},

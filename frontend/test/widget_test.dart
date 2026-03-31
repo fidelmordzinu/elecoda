@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
+import 'package:frontend/models/component_model.dart';
+import 'package:frontend/models/circuit_model.dart';
 import 'package:frontend/providers/search_provider.dart';
 import 'package:frontend/providers/inventory_provider.dart';
 import 'package:frontend/providers/circuit_provider.dart';
@@ -16,7 +19,7 @@ class MockDatabase extends Mock implements AppDatabase {}
 
 class MockSearchProvider extends ChangeNotifier implements SearchProvider {
   @override
-  List results = [];
+  List<ComponentModel> results = [];
   @override
   bool isLoading = false;
   @override
@@ -31,7 +34,7 @@ class MockSearchProvider extends ChangeNotifier implements SearchProvider {
 class MockInventoryProvider extends ChangeNotifier
     implements InventoryProvider {
   @override
-  List components = [];
+  List<Component> components = [];
   @override
   bool isLoading = false;
   @override
@@ -40,7 +43,7 @@ class MockInventoryProvider extends ChangeNotifier
   @override
   Future<void> loadComponents() async {}
   @override
-  Future<bool> addComponent(component) async => true;
+  Future<bool> addComponent(ComponentModel component) async => true;
   @override
   Future<void> removeComponent(int id) async {}
   @override
@@ -51,7 +54,7 @@ class MockInventoryProvider extends ChangeNotifier
 
 class MockCircuitProvider extends ChangeNotifier implements CircuitProvider {
   @override
-  dynamic response;
+  CircuitResponse? response;
   @override
   bool isLoading = false;
   @override
@@ -73,13 +76,13 @@ Widget createHomeScreen() {
   final database = MockDatabase();
   return MultiProvider(
     providers: [
-      ChangeNotifierProvider(
+      ChangeNotifierProvider<SearchProvider>(
         create: (_) => MockSearchProvider(apiService: apiService),
       ),
-      ChangeNotifierProvider(
+      ChangeNotifierProvider<InventoryProvider>(
         create: (_) => MockInventoryProvider(database: database),
       ),
-      ChangeNotifierProvider(
+      ChangeNotifierProvider<CircuitProvider>(
         create: (_) => MockCircuitProvider(apiService: apiService),
       ),
     ],
@@ -89,7 +92,7 @@ Widget createHomeScreen() {
 
 Widget createInventoryScreen() {
   final database = MockDatabase();
-  return ChangeNotifierProvider(
+  return ChangeNotifierProvider<InventoryProvider>(
     create: (_) => MockInventoryProvider(database: database),
     child: const MaterialApp(home: InventoryScreen()),
   );
@@ -97,8 +100,16 @@ Widget createInventoryScreen() {
 
 Widget createCircuitScreen() {
   final apiService = MockApiService();
-  return ChangeNotifierProvider(
-    create: (_) => MockCircuitProvider(apiService: apiService),
+  final database = MockDatabase();
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<CircuitProvider>(
+        create: (_) => MockCircuitProvider(apiService: apiService),
+      ),
+      ChangeNotifierProvider<InventoryProvider>(
+        create: (_) => MockInventoryProvider(database: database),
+      ),
+    ],
     child: const MaterialApp(home: CircuitGeneratorScreen()),
   );
 }
