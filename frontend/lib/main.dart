@@ -26,6 +26,7 @@ class ElecodaApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        Provider(create: (_) => apiService),
         ChangeNotifierProvider(
           create: (_) => SearchProvider(apiService: apiService),
         ),
