@@ -41,8 +41,13 @@ class CircuitConnection {
 class CircuitResponse {
   final List<CircuitComponent> components;
   final List<CircuitConnection> connections;
+  final String description;
 
-  CircuitResponse({required this.components, required this.connections});
+  CircuitResponse({
+    required this.components,
+    required this.connections,
+    this.description = '',
+  });
 
   factory CircuitResponse.fromJson(Map<String, dynamic> json) {
     return CircuitResponse(
@@ -58,6 +63,7 @@ class CircuitResponse {
               )
               .toList() ??
           [],
+      description: json['description'] as String? ?? '',
     );
   }
 }

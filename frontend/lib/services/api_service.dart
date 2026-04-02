@@ -17,7 +17,15 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  String get baseUrl => dotenv.env['BACKEND_URL'] ?? 'http://localhost:8000';
+  static const String _defaultUrl = 'https://elecoda.onrender.com';
+
+  String get baseUrl {
+    final envUrl = dotenv.env['BACKEND_URL'];
+    if (envUrl != null && envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    return _defaultUrl;
+  }
 
   Future<List<ComponentModel>> searchComponents(
     String query, {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/app_database.dart';
@@ -36,9 +38,12 @@ class InventoryProvider extends ChangeNotifier {
     await database.insertComponent(
       ComponentsCompanion(
         mpn: Value(component.partNumber),
-        description: Value(component.manufacturer),
+        manufacturer: Value(component.manufacturer),
+        description: Value(component.category),
         datasheetUrl: Value(null),
-        specs: Value(component.attributes?.toString()),
+        specs: component.attributes != null
+            ? Value(jsonEncode(component.attributes))
+            : const Value(null),
         category: Value(component.category),
         quantity: const Value(1),
       ),

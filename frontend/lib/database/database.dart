@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 class Components extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get mpn => text()();
+  TextColumn get manufacturer => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get datasheetUrl => text().nullable()();
   TextColumn get specs => text().nullable()();
