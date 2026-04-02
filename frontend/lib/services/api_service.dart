@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/component_model.dart';
@@ -17,14 +18,16 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  static const String _defaultUrl = 'https://elecoda.onrender.com';
+  static const String _prodUrl = 'https://elecoda.onrender.com';
+  static const String _devUrl = 'http://10.0.2.2:8000';
 
   String get baseUrl {
     final envUrl = dotenv.env['BACKEND_URL'];
     if (envUrl != null && envUrl.isNotEmpty) {
       return envUrl;
     }
-    return _defaultUrl;
+    if (kDebugMode) return _devUrl;
+    return _prodUrl;
   }
 
   Future<List<ComponentModel>> searchComponents(
