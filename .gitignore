@@ -38,3 +38,11 @@ Thumbs.db
 
 # Misc
 *.log
+
+# Migration artifacts
+backend/electronics_db_data.sql
+backend/local_ids.txt
+backend/missing_ids.txt
+backend/remote_ids.txt
+backend/supabase_csv_export/
+frontend/android/app/src/main/res/xml/
